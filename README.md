@@ -20,8 +20,19 @@ Para que este script funcione correctamente, necesitas tener en tu sistema:
     ```
 
 ## 🛠️ Uso
+ 
+### 1. Descargar Video Completo (MP4)
 
-Para extraer el audio de un video, ejecuta el siguiente comando en tu terminal:
+Para descargar el video en la mejor calidad disponible:
+
+```bash
+node video-extractor.js "URL_DEL_VIDEO"
+```
+El archivo se guardará automáticamente en la carpeta `Video completo`.
+
+### 2. Descargar solo Audio (MP3) y Recortar
+
+Para extraer solo el audio y tener la opción de recortarlo:
 
 ```bash
 node video-extractor.js "URL_DEL_VIDEO" --audio
@@ -29,9 +40,10 @@ node video-extractor.js "URL_DEL_VIDEO" --audio
 
 ### Funcionalidades:
 
-*   **Descarga de Audio**: Descarga el audio en formato MP3 de alta calidad en la carpeta `Audio completo`.
+*   **Descarga de Video**: Obtiene el video en formato MP4 (Video + Audio) en alta calidad.
+*   **Descarga de Audio**: Extrae el audio en formato MP3 de alta calidad en la carpeta `Audio completo`.
 *   **Limpieza de Nombres**: Los archivos se guardan con nombres simplificados (sin tildes ni caracteres especiales) para evitar problemas de compatibilidad.
-*   **Recorte Opcional**: Al finalizar la descarga, el script te preguntará si deseas recortar un fragmento.
+*   **Recorte Opcional (Solo Audio)**: Al finalizar la descarga de audio, el script te preguntará si deseas recortar un fragmento.
     *   Si respondes **'s'** (sí), te pedirá:
         *   Tiempo de inicio (ej: `00:01:30` o `90` segundos).
         *   Duración del fragmento (ej: `30` segundos).
@@ -42,7 +54,8 @@ node video-extractor.js "URL_DEL_VIDEO" --audio
 
 El script creará automáticamente estas carpetas si no existen:
 
-*   `Audio completo/`: Almacena los audios completos descargados.
+*   `Video completo/`: Almacena los videos descargados en formato MP4.
+*   `Audio completo/`: Almacena los audios completos descargados en formato MP3.
 *   `Audio cut/`: Almacena los fragmentos de audio recortados.
 
 ## 📝 Notas
