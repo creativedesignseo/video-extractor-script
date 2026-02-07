@@ -15,7 +15,7 @@
  * Fecha: 07/02/2026
  */
 
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const ffmpegPath = require('ffmpeg-static');
 const path = require('path');
 const fs = require('fs');
@@ -27,10 +27,12 @@ const ytDlpPath = path.resolve(__dirname, 'yt-dlp.exe');
 // Output directories
 const fullAudioDir = path.resolve(__dirname, 'Audio completo');
 const cutAudioDir = path.resolve(__dirname, 'Audio cut');
+const fullVideoDir = path.resolve(__dirname, 'Video completo');
 
 // Ensure directories exist
 if (!fs.existsSync(fullAudioDir)) fs.mkdirSync(fullAudioDir, { recursive: true });
 if (!fs.existsSync(cutAudioDir)) fs.mkdirSync(cutAudioDir, { recursive: true });
+if (!fs.existsSync(fullVideoDir)) fs.mkdirSync(fullVideoDir, { recursive: true });
 
 const args = process.argv.slice(2);
 const videoUrl = args.find(arg => arg.startsWith('http'));
@@ -162,6 +164,51 @@ function cutAudio(inputFile, start, duration) {
     });
 }
 
+// Function to download full video
+function downloadFullVideo(url) {
+    return new Promise((resolve, reject) => {
+        console.log('\nDescargando video completo...');
+        
+        const ytArgs = [
+            '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            '--merge-output-format', 'mp4',
+            '--ffmpeg-location', ffmpegPath,
+            '--no-playlist', 
+            '--restrict-filenames', 
+            '-o', `${fullVideoDir}/%(title)s.%(ext)s`,
+            url
+        ];
+
+        const child = spawn(ytDlpPath, ytArgs);
+        let outputFilename = null;
+
+        child.stdout.on('data', (data) => {
+            const lines = data.toString().split('\n');
+            lines.forEach(line => {
+                console.log(line); 
+                if (line.includes('[Merger] Merging formats into')) {
+                    outputFilename = line.split('Merging formats into "')[1].trim().replace('"', '');
+                } else if (line.includes('[download] Destination:') && !outputFilename) {
+                    outputFilename = line.split('Destination: ')[1].trim();
+                } else if (line.includes('has already been downloaded')) {
+                    const parts = line.split('download] ')[1].trim().split(' has already')[0];
+                    outputFilename = parts;
+                }
+            });
+        });
+
+        child.stderr.on('data', (data) => console.error(data.toString()));
+
+        child.on('close', (code) => {
+            if (code === 0) {
+                resolve(outputFilename);
+            } else {
+                reject(new Error(`yt-dlp exited with code ${code}`));
+            }
+        });
+    });
+}
+
 async function main() {
     if (!fs.existsSync(ytDlpPath)) {
         console.error('Error: yt-dlp.exe no encontrado.');
@@ -206,9 +253,21 @@ async function main() {
          }
 
     } else {
-        // Video logic (unchanged for now, or just direct link)
-        console.log('Modo video no modificado (usa --audio para descargar mp3).');
-        rl.close();
+        try {
+            const downloadedFile = await downloadFullVideo(videoUrl);
+            
+            if (!downloadedFile) {
+                console.error('No se pudo determinar el archivo descargado. Revisa la carpeta "Video completo".');
+                process.exit(1);
+            }
+
+            console.log(`\nVideo completo guardado en: ${downloadedFile}`);
+            
+        } catch (err) {
+            console.error('Error:', err.message);
+        } finally {
+            rl.close();
+        }
     }
 }
 
