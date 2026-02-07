@@ -1,6 +1,7 @@
 node_modules/
 Audio completo/
 Audio cut/
+Video completo/
 *.exe
 .DS_Store
 Thumbs.db
