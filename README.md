@@ -38,6 +38,19 @@ Para extraer solo el audio y tener la opción de recortarlo:
 node video-extractor.js "URL_DEL_VIDEO" --audio
 ```
 
+### 3. Recortar Audio Existente
+
+Si ya tienes archivos de audio descargados en la carpeta `Audio completo` y quieres recortarlos:
+
+```bash
+node video-extractor.js --recortar
+```
+
+*   El script listará los archivos disponibles.
+*   Selecciona el número del archivo que deseas recortar.
+*   Ingresa el tiempo de inicio y la duración.
+*   El fragmento recortado se guardará en `Audio cut`.
+
 ### Funcionalidades:
 
 *   **Descarga de Video**: Obtiene el video en formato MP4 (Video + Audio) en alta calidad.

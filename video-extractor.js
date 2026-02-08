@@ -37,6 +37,8 @@ if (!fs.existsSync(fullVideoDir)) fs.mkdirSync(fullVideoDir, { recursive: true }
 const args = process.argv.slice(2);
 const videoUrl = args.find(arg => arg.startsWith('http'));
 const isAudioOnly = args.includes('--audio');
+const isTrimMode = args.includes('--recortar') || args.includes('--trim');
+const specifiedFile = args.find(arg => !arg.startsWith('http') && !arg.startsWith('--') && arg.endsWith('.mp3'));
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -112,7 +114,7 @@ function downloadFullAudio(url) {
                 // If -o was absolute, yt-dlp reports absolute.
                 resolve(outputFilename);
             } else {
-               reject(new Error(`yt-dlp exited with code ${code}`));
+               reject(new Error(`yt-dlp salio con codigo ${code}`));
             }
         });
     });
@@ -132,7 +134,7 @@ function cutAudio(inputFile, start, duration) {
          }
 
          const filename = path.basename(fullPathInput);
-         const outputFile = path.join(cutAudioDir, `CUT_${filename}`);
+         const outputFile = path.join(cutAudioDir, `RECORTADO_${filename}`);
 
          console.log(`\nRecortando: ${start}s + ${duration}s`);
          console.log(`Origen: ${fullPathInput}`);
@@ -158,11 +160,77 @@ function cutAudio(inputFile, start, duration) {
              if (code === 0) {
                  resolve(outputFile);
              } else {
-                 reject(new Error(`ffmpeg exited with code ${code}`));
+                 reject(new Error(`ffmpeg salio con codigo ${code}`));
              }
          });
     });
 }
+
+// Function to handle trim logic separately
+async function handleTrimMode() {
+    try {
+        let targetFile = specifiedFile;
+
+        // If no file specified, list files in 'Audio completo'
+        if (!targetFile) {
+            const files = fs.readdirSync(fullAudioDir).filter(f => f.endsWith('.mp3'));
+            
+            if (files.length === 0) {
+                console.log('No se encontraron archivos .mp3 en la carpeta "Audio completo".');
+                return;
+            }
+
+            console.log('\nArchivos disponibles para recortar:');
+            files.forEach((file, index) => {
+                console.log(`${index + 1}. ${file}`);
+            });
+
+            const selection = await askQuestion('\nSelecciona el número del archivo que quieres recortar: ');
+            const selectedIndex = parseInt(selection) - 1;
+
+            if (isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= files.length) {
+                console.error('Selección inválida.');
+                return;
+            }
+
+            targetFile = path.join(fullAudioDir, files[selectedIndex]);
+        } else {
+            // Check if specified file exists (relative or absolute)
+            if (!fs.existsSync(targetFile)) {
+                // Try checking inside Audio completo
+                const potentialPath = path.join(fullAudioDir, targetFile);
+                if (fs.existsSync(potentialPath)) {
+                    targetFile = potentialPath;
+                } else {
+                    console.error(`El archivo "${targetFile}" no existe.`);
+                    return;
+                }
+            }
+        }
+
+        console.log(`\nArchivo seleccionado: ${targetFile}`);
+        
+        const startInput = await askQuestion('¿Tiempo de inicio? (ej: 00:01:30 o 90): ');
+        const durationInput = await askQuestion('¿Duración a recortar en segundos? (ej: 30): ');
+        
+        const startSeconds = parseTimeToSeconds(startInput);
+        const durationSeconds = parseTimeToSeconds(durationInput);
+        
+        if (isNaN(startSeconds) || isNaN(durationSeconds)) {
+             console.error('Tiempos inválidos.');
+             return;
+        }
+
+        const outputFile = await cutAudio(targetFile, startSeconds, durationSeconds);
+        console.log(`\n¡Recorte guardado exitosamente en: ${outputFile}`);
+
+    } catch (err) {
+        console.error('Error al recortar:', err.message);
+    } finally {
+        rl.close();
+    }
+}
+
 
 // Function to download full video
 function downloadFullVideo(url) {
@@ -203,7 +271,7 @@ function downloadFullVideo(url) {
             if (code === 0) {
                 resolve(outputFilename);
             } else {
-                reject(new Error(`yt-dlp exited with code ${code}`));
+                reject(new Error(`yt-dlp salio con codigo ${code}`));
             }
         });
     });
@@ -215,8 +283,13 @@ async function main() {
         process.exit(1);
     }
 
+    if (isTrimMode) {
+        await handleTrimMode();
+        return;
+    }
+
     if (!videoUrl) {
-        console.error('Uso: node video-extractor.js "URL" [--audio]');
+        console.error('Uso: node video-extractor.js "URL" [--audio] O node video-extractor.js --recortar');
         process.exit(1);
     }
 
